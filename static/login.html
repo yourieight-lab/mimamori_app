@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zenith Care - ログイン</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Noto Sans JP', sans-serif; background: #f8f9fa; color: #191c1d; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48; }
+  input:focus { outline: none; border-color: #00478d; box-shadow: 0 0 0 3px rgba(0,71,141,0.15); }
+  .btn-primary { background: #00478d; color: #fff; border-radius: 1rem; height: 64px; font-size: 20px; font-weight: 700; width: 100%; transition: transform 120ms; }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-primary:disabled { background: #c2c6d4; cursor: not-allowed; }
+  .error-msg { color: #ba1a1a; font-size: 18px; display: none; }
+</style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center px-6">
+
+  <div class="w-full max-w-sm">
+    <!-- ロゴ -->
+    <div class="text-center mb-10">
+      <div class="w-20 h-20 bg-[#00478d] rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <span class="material-symbols-outlined text-white" style="font-size:48px;font-variation-settings:'FILL' 1;">health_and_safety</span>
+      </div>
+      <h1 class="text-[28px] font-bold text-[#00478d]">病院サポート</h1>
+      <p class="text-[18px] text-[#424752] mt-1">健康を支え続けます</p>
+    </div>
+
+    <!-- フォーム -->
+    <div class="bg-white border-2 border-[#c2c6d4] rounded-[1rem] p-8 space-y-6 shadow-sm">
+      <div>
+        <label class="block text-[18px] font-bold text-[#191c1d] mb-2">メールアドレス</label>
+        <input id="email" type="email" autocomplete="email"
+          class="w-full border-2 border-[#c2c6d4] rounded-[0.75rem] px-4 h-[56px] text-[20px] transition-all"
+          placeholder="example@email.com">
+      </div>
+      <div>
+        <label class="block text-[18px] font-bold text-[#191c1d] mb-2">パスワード</label>
+        <input id="password" type="password" autocomplete="current-password"
+          class="w-full border-2 border-[#c2c6d4] rounded-[0.75rem] px-4 h-[56px] text-[20px] transition-all"
+          placeholder="••••••••">
+      </div>
+
+      <p class="error-msg" id="errMsg"></p>
+
+      <button class="btn-primary" id="loginBtn">ログイン</button>
+    </div>
+
+    <p class="text-center text-[16px] text-[#424752] mt-6">
+      アカウントをお持ちでない方は<br>
+      <a href="register.html" class="text-[#00478d] font-bold underline">新規登録はこちら</a>
+    </p>
+  </div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+
+await import('./config.js').catch(() => {});
+const cfg = window.__FIREBASE_CONFIG__;
+if (!cfg) { document.getElementById('errMsg').style.display = 'block'; document.getElementById('errMsg').textContent = 'config.jsが見つかりません'; }
+
+const app = initializeApp(cfg || {});
+const auth = getAuth(app);
+
+// 既ログイン → ホームへ
+onAuthStateChanged(auth, u => { if (u) location.href = 'index.html'; });
+
+const loginBtn = document.getElementById('loginBtn');
+const errMsg   = document.getElementById('errMsg');
+
+loginBtn.addEventListener('click', async () => {
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  if (!email || !password) { show('メールアドレスとパスワードを入力してください'); return; }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'ログイン中…';
+  errMsg.style.display = 'none';
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    location.href = 'index.html';
+  } catch (e) {
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'ログイン';
+    const msgs = {
+      'auth/user-not-found': 'メールアドレスが登録されていません',
+      'auth/wrong-password': 'パスワードが間違っています',
+      'auth/invalid-credential': 'メールアドレスまたはパスワードが間違っています',
+      'auth/too-many-requests': 'しばらくしてからもう一度お試しください',
+    };
+    show(msgs[e.code] || 'ログインに失敗しました');
+  }
+});
+
+function show(msg) { errMsg.style.display = 'block'; errMsg.textContent = msg; }
+</script>
+</body>
+</html>

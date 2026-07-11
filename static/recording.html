@@ -1,0 +1,352 @@
+<!DOCTYPE html><html lang="ja" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Zenith Care - 診察記録</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 48;
+        }
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .active-scale:active {
+            transform: scale(0.95);
+            transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "inverse-surface": "#2e3132", "surface": "#f8f9fa",
+                        "primary-fixed": "#d6e3ff", "on-secondary-container": "#00752a",
+                        "secondary-fixed": "#82fc90", "secondary": "#006e28",
+                        "surface-container-low": "#f3f4f5", "on-secondary": "#ffffff",
+                        "on-primary": "#ffffff", "secondary-fixed-dim": "#65df77",
+                        "inverse-primary": "#a9c7ff", "surface-tint": "#005db6",
+                        "on-surface": "#191c1d", "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#00478d", "on-surface-variant": "#424752",
+                        "tertiary-container": "#c1002c", "primary-container": "#005eb8",
+                        "outline-variant": "#c2c6d4", "error": "#ba1a1a",
+                        "surface-container-high": "#e7e8e9", "on-tertiary-container": "#ffcfcd",
+                        "outline": "#727783", "on-tertiary": "#ffffff",
+                        "surface-container-highest": "#e1e3e4", "on-error-container": "#410002",
+                        "on-primary-container": "#c8daff", "surface-bright": "#f8f9fa",
+                        "on-error": "#ffffff", "surface-container": "#edeeef",
+                        "on-primary-fixed": "#001b3d", "on-secondary-fixed": "#002106",
+                        "tertiary": "#940020", "on-secondary-fixed-variant": "#00531c",
+                        "tertiary-fixed-dim": "#ffb3b4", "primary-fixed-dim": "#a9c7ff",
+                        "primary": "#00478d", "scrim": "#000000",
+                        "surface-container-lowest": "#ffffff", "tertiary-fixed": "#ffdad9",
+                        "on-tertiary-fixed-variant": "#6e0015", "on-tertiary-fixed": "#3a0007",
+                        "surface-dim": "#d9dadb"
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface min-h-[844px] pb-32">
+<header class="fixed top-0 left-0 right-0 h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 flex items-center justify-between px-4 z-40">
+<a class="w-12 h-12 flex items-center justify-center text-primary active-scale" href="index.html">
+<span class="material-symbols-outlined text-[32px]" data-icon="arrow_back">arrow_back</span>
+</a>
+<h1 class="text-headline-sm font-black text-primary tracking-wide">診察記録</h1>
+<button class="w-12 h-12 flex items-center justify-center text-primary active-scale">
+<span class="material-symbols-outlined text-[32px]" data-icon="account_circle">account_circle</span>
+</button>
+</header>
+<main class="pt-20 px-4 max-w-md mx-auto space-y-8">
+<section class="flex flex-col items-center justify-center pt-6 relative">
+<div class="relative w-48 h-48 flex items-center justify-center">
+<div class="absolute inset-0 rounded-full bg-primary/20 animate-ping"></div>
+<button id="recordBtn" class="absolute w-40 h-40 bg-primary text-on-primary rounded-full flex flex-col items-center justify-center shadow-lg shadow-primary/20 active-scale z-10 border-4 border-primary-fixed transition-colors duration-300">
+<span class="material-symbols-outlined text-[56px] text-white" data-icon="mic">mic</span>
+<span class="text-label-lg font-black text-white mt-1">録音を開始</span>
+</button>
+</div>
+<p id="statusDesc" class="text-body-md font-medium text-on-surface-variant mt-6 text-center leading-relaxed">診察が始まったらボタンを押してください。<br>会話を自動で記録・要約します。</p>
+</section>
+
+<div id="processingBanner" class="hidden bg-primary/5 border-2 border-primary/20 rounded-2xl p-5 space-y-3 shadow-inner">
+    <p class="text-label-lg font-black text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined animate-spin text-[20px]" style="font-variation-settings: 'wght' 600">progress_activity</span>
+        AIが要約を作成中…
+    </p>
+    <div class="space-y-2 text-body-md text-on-surface-variant font-medium">
+        <div class="flex items-center gap-3" id="step1">
+            <span class="material-symbols-outlined text-outline" id="step1Icon">radio_button_unchecked</span>
+            <span id="step1Txt">音声データをアップロード中…</span>
+        </div>
+        <div class="flex items-center gap-3" id="step2">
+            <span class="material-symbols-outlined text-outline" id="step2Icon">radio_button_unchecked</span>
+            <span id="step2Txt">文字起こしを並列処理中…</span>
+        </div>
+        <div class="flex items-center gap-3" id="step3">
+            <span class="material-symbols-outlined text-outline" id="step3Icon">radio_button_unchecked</span>
+            <span id="step3Txt">Geminiで要約・まとめを生成中…</span>
+        </div>
+    </div>
+</div>
+
+<section class="space-y-4">
+<h2 class="text-title-lg font-black text-on-surface tracking-wide flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[28px]" data-icon="history" style="font-variation-settings: 'FILL' 1">history</span>最近の診察記録
+</h2>
+<div id="recordingList" class="space-y-4">
+    <p class="text-center py-4 text-on-surface-variant font-medium">読み込み中…</p>
+</div>
+</section>
+</main>
+
+<div id="detailOverlay" class="fixed inset-0 bg-black/40 z-50 opacity-0 pointer-events-none transition-opacity duration-300 flex items-end">
+    <div id="detailSheet" class="w-full bg-surface rounded-t-[24px] p-6 space-y-6 transform translate-y-full transition-transform duration-300 max-h-[85vh] overflow-y-auto shadow-2xl">
+        <div class="w-12 h-1 bg-outline-variant rounded-full mx-auto"></div>
+        <div class="flex justify-between items-start">
+            <div>
+                <h3 id="detailTitle" class="text-headline-sm font-black text-on-surface">—</h3>
+                <p id="detailDate" class="text-body-sm font-medium text-on-surface-variant mt-1">—</p>
+            </div>
+            <button onclick="closeDetail()" class="w-10 h-10 flex items-center justify-center bg-surface-container-high rounded-full text-on-surface active-scale">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="bg-secondary-container/30 border-2 border-secondary/20 rounded-2xl p-4 space-y-1">
+            <h4 class="text-label-md font-black text-on-secondary-container tracking-wider flex items-center gap-1">
+                <span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1">stars</span>お医者さんからのメッセージ
+            </h4>
+            <p id="easyText" class="text-body-md text-on-surface font-medium leading-relaxed">—</p>
+        </div>
+        <div class="space-y-4">
+            <div class="p-4 bg-surface-container-low rounded-2xl border border-outline-variant/30">
+                <p class="text-label-sm font-bold text-primary">診断内容・病状</p>
+                <p id="diagText" class="text-body-md text-on-surface mt-1 font-medium">—</p>
+            </div>
+            <div class="p-4 bg-surface-container-low rounded-2xl border border-outline-variant/30">
+                <p class="text-label-sm font-bold text-secondary">生活上の注意点・お薬</p>
+                <p id="lifeText" class="text-body-md text-on-surface mt-1 font-medium">—</p>
+            </div>
+            <div class="p-4 bg-primary-fixed text-on-primary-fixed rounded-2xl border border-primary/10">
+                <p class="text-label-sm font-bold text-primary">次回の予定</p>
+                <p id="nextText" class="text-body-lg font-black text-on-surface mt-1">—</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<nav class="fixed bottom-0 left-0 right-0 h-24 bg-surface/90 backdrop-blur-md border-t-2 border-outline-variant/50 flex justify-around items-center px-2 z-40">
+<a class="flex flex-col items-center justify-center text-on-surface-variant active-scale px-4 py-2" href="index.html">
+<span class="material-symbols-outlined text-[32px]" data-icon="home">home</span>
+<span class="font-label-lg text-label-lg-mobile mt-1">ホーム</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active-scale px-4 py-2" href="#">
+<span class="material-symbols-outlined text-[32px]" data-icon="calendar_month">calendar_month</span>
+<span class="font-label-lg text-label-lg-mobile mt-1">お薬手帳</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary active-scale px-4 py-2" href="recording.html">
+<span class="material-symbols-outlined text-[32px]" data-icon="mic" style="font-variation-settings: 'FILL' 1">mic</span>
+<span class="font-label-lg text-label-lg-mobile mt-1 font-bold">受診記録</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active-scale px-4 py-2" href="#">
+<span class="material-symbols-outlined text-[32px]" data-icon="contact_phone">contact_phone</span>
+<span class="font-label-lg text-label-lg-mobile mt-1">緊急連絡</span>
+</a>
+</nav>
+
+<script type="module">
+    let mediaRecorder = null, audioChunks = [], isRecording = false;
+    const headers = { 'X-Debug-Uid': 'demo-user' };
+
+    // 500エラーが起きても画面を壊さず、ループを安全にいなす修正
+    async function loadRecordings() {
+        try {
+            const res = await fetch('/recordings', { headers });
+            if (!res.ok) {
+                throw new Error("Server Error");
+            }
+            const list = await res.json();
+            renderList(list);
+        } catch (err) {
+            console.error("履歴の取得に失敗:", err);
+            document.getElementById('recordingList').innerHTML = 
+                '<p class="text-on-surface-variant text-center py-4">履歴を更新しています（数秒お待ちください）</p>';
+        }
+    }
+    setTimeout(loadRecordings, 200);
+
+    function renderList(list) {
+        const el = document.getElementById('recordingList');
+        if(!list || !list.length) { el.innerHTML = '<p class="text-on-surface-variant text-center py-4">記録がまだありません</p>'; return; }
+        
+        // エラーデータや中身が空のデータは一覧に表示させない防衛策
+        const validList = list.filter(r => r.status !== 'error' && (r.easy_summary || r.status === 'processing'));
+        if(!validList.length) { el.innerHTML = '<p class="text-on-surface-variant text-center py-4">記録がまだありません</p>'; return; }
+
+        el.innerHTML = validList.map(r => `
+            <div class="glass-card rounded-2xl p-5 border-2 border-outline-variant/40 shadow-sm flex justify-between items-center transition-all">
+                <div class="space-y-1 max-w-[70%]">
+                    <p class="text-xs font-bold text-on-surface-variant">${r.started_at?.slice(5,10).replace('-','/')}の診察</p>
+                    <p class="font-black text-lg text-on-surface truncate">${r.title || '見出し作成中…'}</p>
+                    <p class="text-sm text-on-surface-variant truncate">${r.easy_summary || '現在解析しています…'}</p>
+                </div>
+                <button onclick="openDetail('${r.id}')" class="bg-primary text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-md shadow-primary/10 active-scale" ${r.status === 'processing' ? 'disabled bg-outline' : ''}>
+                    ${r.status === 'processing' ? '解析中' : '詳細を見る'}
+                </button>
+            </div>
+        `).join('');
+    }
+
+    window.openDetail = async function(id) {
+        const overlay = document.getElementById('detailOverlay');
+        const sheet = document.getElementById('detailSheet');
+        overlay.classList.add('opacity-100', 'pointer-events-auto');
+        sheet.classList.remove('translate-y-full');
+
+        try {
+            const res = await fetch(`/recordings/${id}`, { headers });
+            const data = await res.json();
+            const s = data.summary || {};
+            document.getElementById('detailTitle').textContent = s.title || data.title || '診察記録';
+            document.getElementById('detailDate').textContent = data.started_at ? new Date(data.started_at).toLocaleString('ja-JP') : '';
+            document.getElementById('easyText').textContent = s.easy_summary || data.easy_summary || '解析中…';
+            document.getElementById('diagText').textContent = s.diagnosis || '—';
+            document.getElementById('lifeText').textContent = s.lifestyle_notes || '—';
+            document.getElementById('nextText').textContent = s.next_appointment || '—';
+        } catch {
+            console.error("Failed to load detail");
+        }
+    };
+
+    window.closeDetail = () => {
+        document.getElementById('detailOverlay').classList.remove('opacity-100', 'pointer-events-auto');
+        document.getElementById('detailSheet').classList.add('translate-y-full');
+    };
+
+    let startTime = null;
+    const recordBtn = document.getElementById('recordBtn');
+    recordBtn.addEventListener('click', async () => {
+        isRecording = !isRecording;
+        const ping = recordBtn.parentElement.querySelector('.animate-ping');
+        
+        if (isRecording) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => {
+                alert('マイクの使用許可が必要です');
+                isRecording = false;
+            });
+            if(!stream) return;
+            
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            startTime = new Date(); // 録音開始時間を正確に記録
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            mediaRecorder.onstop = async () => {
+                const endTime = new Date();
+                const duration = Math.round((endTime - startTime) / 1000);
+                const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                await uploadAudio(blob, startTime.toISOString(), endTime.toISOString(), duration);
+            };
+            mediaRecorder.start();
+
+            recordBtn.classList.remove('bg-primary');
+            recordBtn.classList.add('bg-error');
+            recordBtn.querySelector('span:last-child').innerText = '停止する';
+            recordBtn.querySelector('.material-symbols-outlined').innerText = 'stop';
+            ping.classList.add('scale-150', 'opacity-50');
+            document.getElementById('statusDesc').innerHTML = '<span class="text-error font-bold">▶ 録音中...</span><br>お医者さんとの会話を記録しています。';
+        } else {
+            if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+            recordBtn.classList.add('bg-primary');
+            recordBtn.classList.remove('bg-error');
+            recordBtn.querySelector('span:last-child').innerText = '録音を開始';
+            recordBtn.querySelector('.material-symbols-outlined').innerText = 'mic';
+            ping.classList.remove('scale-150', 'opacity-50');
+            document.getElementById('statusDesc').innerHTML = '診察が始まったらボタンを押してください。<br>会話を自動で記録・要約します。';
+        }
+    });
+
+    // 録音データを動的に送信するように修正
+    async function uploadAudio(blob, startIso, endIso, durationSec) {
+        const banner = document.getElementById('processingBanner');
+        banner.classList.remove('hidden');
+        updateStep(1, 'loading', '音声データをアップロード中…');
+        updateStep(2, 'none', '文字起こしを保留中…');
+        updateStep(3, 'none', 'Gemini要約を保留中…');
+
+        try {
+            const res = await fetch('/recordings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...headers },
+                body: JSON.stringify({ duration_sec: durationSec, started_at: startIso, ended_at: endIso })
+            });
+            const { recording_id, upload_url } = await res.json();
+            
+            await fetch(upload_url, { method: 'PUT', body: blob });
+            updateStep(1, 'success', '音声データのアップロード完了');
+            updateStep(2, 'loading', '文字起こしを処理中…');
+            
+            await fetch(`/recordings/${recording_id}/start-processing`, { method: 'POST', headers });
+            startPolling(recording_id);
+        } catch (err) {
+            console.error(err);
+            banner.classList.add('hidden');
+            alert("アップロード中にエラーが発生しました");
+        }
+    }
+
+    // ステータスの変化を正しくトラッキングするポーリング修正
+    function startPolling(id) {
+        const timer = setInterval(async () => {
+            try {
+                const res = await fetch(`/recordings/${id}`, { headers });
+                const data = await res.json();
+                
+                if(data.status === 'done') {
+                    clearInterval(timer);
+                    updateStep(2, 'success', '文字起こし完了');
+                    updateStep(3, 'success', 'Geminiによる要約完了！');
+                    setTimeout(() => {
+                        document.getElementById('processingBanner').classList.add('hidden');
+                        loadRecordings();
+                    }, 1500);
+                } else if (data.status === 'error' || data.easy_summary?.includes("作成できませんでした")) {
+                    // 文字起こしが空だった場合のダミーテキスト返却をエラーとして安全にハンドリング
+                    clearInterval(timer);
+                    document.getElementById('processingBanner').classList.add('hidden');
+                    alert("診察内容が聞き取れませんでした。マイクの近くでもう少し長く話してください。");
+                    loadRecordings();
+                } else {
+                    // まだ処理中の場合
+                    updateStep(2, 'loading', '文字起こしを処理中…');
+                }
+            } catch {
+                clearInterval(timer);
+            }
+        }, 4000);
+    }
+
+    function updateStep(n, status, text) {
+        const icon = document.getElementById(`step${n}Icon`);
+        const txt = document.getElementById(`step${n}Txt`);
+        if(!icon || !txt) return;
+        txt.textContent = text;
+        if(status === 'loading') {
+            icon.textContent = 'progress_activity'; icon.className = 'material-symbols-outlined text-primary animate-spin';
+        } else if(status === 'success') {
+            icon.textContent = 'check_circle'; icon.className = 'material-symbols-outlined text-secondary';
+        } else if(status === 'none') {
+            icon.textContent = 'radio_button_unchecked'; icon.className = 'material-symbols-outlined text-outline';
+        }
+    }
+</script>

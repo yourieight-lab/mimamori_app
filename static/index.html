@@ -1,0 +1,155 @@
+cat << 'EOF' > static/index.html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>病院サポート - ホーム</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Noto Sans JP', sans-serif; background: #f8f9fa; color: #191c1d; -webkit-tap-highlight-color: transparent; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48; }
+  .btn-active:active { transform: scale(0.98); transition: transform 100ms; }
+  .toast {
+    position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #191c1d; color: #f0f1f2; padding: 12px 28px; border-radius: 9999px;
+    font-size: 18px; font-weight: 500; opacity: 0; transition: opacity 0.3s, transform 0.3s;
+    z-index: 300; white-space: nowrap; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body class="pb-32">
+
+<div class="toast" id="toast"></div>
+
+<header class="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-surface border-b-2 border-outline-variant">
+  <div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary" style="font-size:36px; font-variation-settings:'FILL' 1;">radial_selection</span>
+    <span class="text-headline-md font-black text-primary tracking-wider">Zenith Care</span>
+  </div>
+  <button class="text-primary btn-active">
+    <span class="material-symbols-outlined" style="font-size:36px;">account_circle</span>
+  </button>
+</header>
+
+<main class="pt-20 px-6 max-w-md mx-auto space-y-6">
+  <section class="py-2">
+    <h2 class="text-headline-lg font-black text-on-background"><span id="userName">デモユーザー</span> さん</h2>
+    <p class="text-body-md text-on-surface-variant mt-1">今日もお薬を忘れずに飲みましょう。</p>
+  </section>
+
+  <section class="bg-primary-fixed text-on-primary-fixed rounded-2xl p-5 shadow-sm border border-primary/10">
+    <div class="flex items-center gap-3 text-primary mb-3">
+      <span class="material-symbols-outlined" style="font-size:28px;">calendar_month</span>
+      <h3 class="text-label-lg font-bold">次回の通院予定</h3>
+    </div>
+    <p class="text-headline-md font-black text-on-surface mb-1" id="appointmentDate">10月25日 (水) 10:00</p>
+    <p class="text-body-md text-on-surface-variant" id="appointmentPlace">場所: 山田中央クリニック</p>
+  </section>
+
+  <section class="bg-surface-container-low rounded-2xl p-5 border-2 border-outline-variant">
+    <div class="flex justify-between items-center mb-4">
+      <div class="flex items-center gap-2 text-on-surface">
+        <span class="material-symbols-outlined text-secondary" style="font-size:28px;">pill</span>
+        <h3 class="text-label-lg font-bold">今日の服薬チェック</h3>
+      </div>
+      <span class="bg-secondary text-on-secondary px-3 py-1 rounded-full text-label-md font-bold" id="medCount">残り3回</span>
+    </div>
+    <div id="medList" class="space-y-3"></div>
+  </section>
+</main>
+
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-[100px] bg-surface border-t-2 border-outline-variant">
+  <button class="flex flex-col items-center justify-center bg-primary-fixed text-primary rounded-xl py-2 px-4 btn-active">
+    <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">home</span>
+    <span class="text-label-lg mt-1">ホーム</span>
+  </button>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant py-2 px-4 btn-active">
+    <span class="material-symbols-outlined">calendar_month</span>
+    <span class="text-label-lg mt-1">お薬手帳</span>
+  </button>
+  <button id="navRecordBtn" class="flex flex-col items-center justify-center text-on-surface-variant py-2 px-4 btn-active">
+    <span class="material-symbols-outlined">mic</span>
+    <span class="text-label-lg mt-1">受診記録</span>
+  </button>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant py-2 px-4 btn-active">
+    <span class="material-symbols-outlined">contact_phone</span>
+    <span class="text-label-lg mt-1">緊急連絡</span>
+  </button>
+</nav>
+
+<script type="module">
+  document.getElementById('navRecordBtn').addEventListener('click', () => {
+    location.href = 'recording.html';
+  });
+
+  // ハッカソン用に起動直後にAPI読込
+  setTimeout(() => { loadRecordings(); }, 300);
+
+  // ── 服薬ロジック ──
+  const medData = [
+    { id: 'm1', label: '朝のお薬 (食後)', time: '08:00' },
+    { id: 'm2', label: '昼のお薬 (食後)', time: '13:00' },
+    { id: 'm3', label: '夜のお薬 (食後)', time: '19:00' }
+  ];
+  let checks = JSON.parse(localStorage.getItem('med_checks') || '{}');
+
+  function renderMeds() {
+    const list = document.getElementById('medList');
+    list.innerHTML = '';
+    let remaining = medData.length;
+
+    medData.forEach(d => {
+      const isChecked = !!checks[d.id];
+      if (isChecked) remaining--;
+
+      const btn = document.createElement('button');
+      btn.className = `w-full h-16 rounded-xl border-2 flex items-center justify-between px-4 btn-active transition-all ${
+        isChecked ? 'bg-secondary/10 border-secondary text-secondary' : 'bg-surface-container border-outline-variant text-on-surface'
+      }`;
+      btn.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined" style="font-size:28px; font-variation-settings:'FILL' ${isChecked?1:0}">${isChecked?'check_circle':'radio_button_unchecked'}</span>
+          <span class="text-body-md font-bold">${d.label}</span>
+        </div>
+        <span class="text-label-md ${isChecked?'text-secondary':'text-outline'}">${d.time}</span>
+      `;
+      btn.addEventListener('click', () => {
+        checks[d.id] = !checks[d.id];
+        localStorage.setItem('med_checks', JSON.stringify(checks));
+        renderMeds();
+        showToast(checks[d.id] ? `${d.label}を記録しました ✓` : `${d.label}の記録を取り消しました`);
+      });
+      list.appendChild(btn);
+    });
+    document.getElementById('medCount').textContent = `残り${remaining}回`;
+  }
+  renderMeds();
+
+  async function loadRecordings() {
+    // デバッグ用のUidヘッダーを付与
+    const headers = { 'X-Debug-Uid': 'demo-user' };
+    try {
+      const res = await fetch('/recordings', { headers });
+      if (!res.ok) throw new Error();
+      const list = await res.json();
+      const done = list.find(r => r.status === 'done' && r.easy_summary);
+      if (done) {
+        document.getElementById('appointmentDate').textContent = done.title || '—';
+        document.getElementById('appointmentPlace').textContent = done.easy_summary?.slice(0, 30) + '…';
+      }
+    } catch {}
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+</script>
+</body>
+</html>
+EOF
