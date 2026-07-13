@@ -26,9 +26,9 @@ from pydantic import BaseModel
 # ══════════════════════════════════════════════════════════════════
 # 設定
 # ══════════════════════════════════════════════════════════════════
-PROJECT_ID        = os.environ["PROJECT_ID"]
-AUDIO_BUCKET      = os.environ["AUDIO_BUCKET"]
-STT_OUTPUT_BUCKET = os.environ["STT_OUTPUT_BUCKET"]
+PROJECT_ID        = os.environ.get("PROJECT_ID", "mimamori-app-499809")
+AUDIO_BUCKET      = os.environ.get("AUDIO_BUCKET", "mimamori-app-499809-audio")
+STT_OUTPUT_BUCKET = os.environ.get("STT_OUTPUT_BUCKET", "mimamori-app-499809-stt-output")
 STT_LOCATION      = os.environ.get("STT_LOCATION",    "us-central1")
 GEMINI_LOCATION   = os.environ.get("GEMINI_LOCATION", "us-central1")
 GEMINI_MODEL      = os.environ.get("GEMINI_MODEL",    "gemini-2.5-flash")
@@ -183,7 +183,7 @@ _SYSTEM_PROMPT = """あなたは、医療機関での診察の文字起こしを
 - 出力は指定されたJSON形式のみとし、前置きや説明文は一切含めないこと。
 - 「やさしい日本語要約」は200字程度を目安とし、難解な医療用語は言い換えること。
 - title は録音履歴一覧に表示する15字以内の短いタイトルにすること。
-- next_appointment について言及がない場合は「次回の予約についての指示はありませんでした」と記載。
+- next_appointment について言言及がない場合は「次回の予約についての指示はありませんでした」と記載。
 """
 
 _RESPONSE_SCHEMA = {
