@@ -3,7 +3,8 @@ name: Deploy to Cloud Run
 on:
   push:
     branches:
-      - main # mainブランチにpushされたら自動実行（masterの場合は master に書き換え）
+      - main
+      - master
 
 jobs:
   deploy:
@@ -17,22 +18,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Workload Identity 認証
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIP_PROVIDER }}
           service_account: ${{ vars.SERVICE_ACCOUNT }}
 
-      # Cloud SDK セットアップ
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      # Docker 認証設定
       - name: Authorize Docker push
         run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev
 
-      # コンテナイメージのビルド & Artifact Registry へ Push
       - name: Build and Push Container
         run: |
           IMAGE_TAG="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/cloud-run-source-deploy/${{ vars.SERVICE_NAME }}:${{ github.sha }}"
@@ -40,7 +37,6 @@ jobs:
           docker push $IMAGE_TAG
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
-      # Cloud Run へデプロイ
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
