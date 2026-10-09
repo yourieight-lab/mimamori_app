@@ -1,6 +1,6 @@
 """
-みまもり - 診察内容の文章化機能
-統合サーバー (Cloud Run 単一サービス / 同期ポーリング版)
+みまもり - 診察内容の文章化＆お薬手帳統合サーバー
+(Cloud Run 単一サービス / 同期ポーリング版)
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from datetime import timedelta
 
 import firebase_admin
 import google.auth
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from firebase_admin import auth as firebase_auth
 from google.auth.transport import requests as gauth_requests
@@ -47,7 +47,7 @@ _auth_request  = gauth_requests.Request()
 _credentials.refresh(_auth_request)
 storage_client = storage.Client(credentials=_credentials, project=_project)
 
-app = FastAPI(title="みまもり 診察記録 API", version="1.0.0")
+app = FastAPI(title="みまもり API", version="1.0.0")
 
 # ──────────────────────────────────────────────────────────────────
 # 認証
@@ -79,9 +79,6 @@ def _generate_upload_url(blob_name: str, content_type: str = "audio/webm") -> st
     )
 
 def _read_json_from_gcs_uri(gcs_uri: str) -> dict:
-    """Chirp変則命名対応版
-    Chirpが生成するランダムなファイル名を自動検知して読み込みます。
-    """
     path = gcs_uri.replace("gs://", "")
     bucket_name, object_name = path.split("/", 1)
     bucket = storage_client.bucket(bucket_name)
@@ -131,10 +128,9 @@ def _parse_batch_result(result_json: dict) -> tuple[str, list[dict]]:
     return "".join(texts), segments
 
 # ──────────────────────────────────────────────────────────────────
-# 🎙️ Speech-to-Text v2 (Chirp) 心臓部関数（機能制限エラー修正版）
+# 🎙️ Speech-to-Text v2 (Chirp)
 # ──────────────────────────────────────────────────────────────────
 def _start_batch_recognize_op(audio_gcs_uri: str, output_gcs_json_uri: str):
-    """Speech-to-Text v2 クライアントを初期化し、Chirpモデルで非同期バッチ文字起こしを開始します。"""
     from google.cloud import speech_v2
     from google.cloud.speech_v2.types import cloud_speech
 
@@ -148,7 +144,6 @@ def _start_batch_recognize_op(audio_gcs_uri: str, output_gcs_json_uri: str):
     
     recognizer_path = f"projects/{PROJECT_ID}/locations/{STT_LOCATION}/recognizers/_"
     
-    # 違反が出た enable_word_confidence を False に設定変更 🚀
     config = cloud_speech.RecognitionConfig(
         features=cloud_speech.RecognitionFeatures(
             enable_word_time_offsets=True,
@@ -174,7 +169,7 @@ def _start_batch_recognize_op(audio_gcs_uri: str, output_gcs_json_uri: str):
     return operation
 
 # ──────────────────────────────────────────────────────────────────
-# Gemini ヘルパー
+# Gemini (診察要約 & お薬画像解析)
 # ──────────────────────────────────────────────────────────────────
 _SYSTEM_PROMPT = """あなたは、医療機関での診察の文字起こしを読み、高齢の患者本人が後から
 理解できるように要約・構造化するアシスタントです。
@@ -183,17 +178,17 @@ _SYSTEM_PROMPT = """あなたは、医療機関での診察の文字起こしを
 - 出力は指定されたJSON形式のみとし、前置きや説明文は一切含めないこと。
 - 「やさしい日本語要約」は200字程度を目安とし、難解な医療用語は言い換えること。
 - title は録音履歴一覧に表示する15字以内の短いタイトルにすること。
-- next_appointment について言言及がない場合は「次回の予約についての指示はありませんでした」と記載。
+- next_appointment について言及がない場合は「次回の予約についての指示はありませんでした」と記載。
 """
 
 _RESPONSE_SCHEMA = {
     "type": "OBJECT",
     "properties": {
-        "title":               {"type": "STRING"},
-        "diagnosis":          {"type": "STRING"},
-        "lifestyle_notes":    {"type": "STRING"},
-        "next_appointment":   {"type": "STRING"},
-        "easy_summary":       {"type": "STRING"},
+        "title":            {"type": "STRING"},
+        "diagnosis":        {"type": "STRING"},
+        "lifestyle_notes": {"type": "STRING"},
+        "next_appointment": {"type": "STRING"},
+        "easy_summary":     {"type": "STRING"},
     },
     "required": ["title","diagnosis","lifestyle_notes","next_appointment","easy_summary"],
 }
@@ -215,8 +210,39 @@ def _summarize_transcript(full_text: str) -> dict:
     )
     return json.loads(response.text)
 
+# --- お薬画像解析用プロンプト & スキーマ ---
+_MED_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "medications": {
+            "type": "ARRAY",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "name": {"type": "STRING"},
+                    "dosage": {"type": "STRING"},
+                    "timing": {
+                        "type": "ARRAY",
+                        "items": {"type": "STRING"}
+                    },
+                    "notes": {"type": "STRING"}
+                },
+                "required": ["name", "timing"]
+            }
+        }
+    },
+    "required": ["medications"]
+}
+
+_MED_PROMPT = """添付された処方袋や薬剤情報シートの画像から、お薬の情報を抽出してください。
+- name: 薬品名
+- dosage: 1回の服用量（例: 1錠、1包）
+- timing: 服用するタイミング（「朝」「昼」「夕」「寝る前」の中から該当するものを配列で指定）
+- notes: 補足事項や注意点（食前/食後など）
+"""
+
 # ══════════════════════════════════════════════════════════════════
-# API エンドポイント
+# API エンドポイント (診察録音系)
 # ══════════════════════════════════════════════════════════════════
 class CreateRecordingRequest(BaseModel):
     duration_sec: int
@@ -230,31 +256,27 @@ def create_recording(req: CreateRecordingRequest, uid: str = Depends(get_current
     audio_uri    = f"gs://{AUDIO_BUCKET}/{blob_name}"
 
     db.collection("recordings").document(recording_id).set({
-        "patient_id":       uid,
-        "started_at":       req.started_at,
-        "ended_at":         req.ended_at,
-        "duration_sec":     req.duration_sec,
+        "patient_id":        uid,
+        "started_at":        req.started_at,
+        "ended_at":          req.ended_at,
+        "duration_sec":      req.duration_sec,
         "audio_storage_uri": audio_uri,
-        "status":           "uploading",
-        "created_at":       firestore.SERVER_TIMESTAMP,
+        "status":            "uploading",
+        "created_at":        firestore.SERVER_TIMESTAMP,
     })
 
     upload_url = _generate_upload_url(blob_name, content_type="audio/webm")
     return {
-        "recording_id":     recording_id,
-        "upload_url":       upload_url,
+        "recording_id":      recording_id,
+        "upload_url":        upload_url,
         "audio_storage_uri": audio_uri,
     }
 
-# ──────────────────────────────────────────────────────────────────
-# 非同期ジョブをスレッド内で同期監視して完結させる
-# ──────────────────────────────────────────────────────────────────
 def _wait_and_process_stt(op, output_json_uri: str, recording_id: str):
     ref = db.collection("recordings").document(recording_id)
     try:
         print(f"⏳ STTの完了を監視中... Operation: {op.operation.name}")
-        
-        for _ in range(90):  # 5秒おきに最大7.5分間待機
+        for _ in range(90):
             time.sleep(5)
             if op.done():
                 break
@@ -328,7 +350,7 @@ def start_processing(recording_id: str, uid: str = Depends(get_current_uid)):
         raise HTTPException(500, f"文字起こし開始失敗: {str(e)}")
 
     ref.update({
-        "status":              "processing",
+        "status":             "processing",
         "stt_operation_name": op.operation.name,
         "stt_output_prefix":  output_json_uri,
     })
@@ -338,9 +360,6 @@ def start_processing(recording_id: str, uid: str = Depends(get_current_uid)):
 
     return {"status": "processing", "operation_name": op.operation.name}
 
-# ──────────────────────────────────────────────────────────────────
-# 取得系エンドポイント
-# ──────────────────────────────────────────────────────────────────
 @app.get("/recordings")
 def list_recordings(uid: str = Depends(get_current_uid)):
     docs = db.collection("recordings").where("patient_id", "==", uid).stream()
@@ -380,4 +399,57 @@ def get_recording(recording_id: str, uid: str = Depends(get_current_uid)):
 async def stt_output_event(request: Request):
     return {"status": "ok"}
 
+# ══════════════════════════════════════════════════════════════════
+# API エンドポイント (お薬手帳系 / 新規追加)
+# ══════════════════════════════════════════════════════════════════
+@app.post("/medications/analyze")
+async def analyze_medication_image(file: UploadFile = File(...), uid: str = Depends(get_current_uid)):
+    from google import genai
+    from google.genai import types
+
+    contents = await file.read()
+    
+    # Gemini に画像を渡して解析
+    client = genai.Client(vertexai=True, project=PROJECT_ID, location=GEMINI_LOCATION)
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=[
+            types.Part.from_bytes(data=contents, mime_type=file.content_type or "image/jpeg"),
+            _MED_PROMPT
+        ],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=_MED_SCHEMA,
+            temperature=0.1,
+        ),
+    )
+    
+    parsed = json.loads(response.text)
+    meds = parsed.get("medications", [])
+    
+    # Firestore に保存
+    saved_items = []
+    for med in meds:
+        doc_ref = db.collection("medications").document()
+        item = {
+            "id": doc_ref.id,
+            "patient_id": uid,
+            "name": med.get("name", "名称不明"),
+            "dosage": med.get("dosage", ""),
+            "timing": med.get("timing", []),
+            "notes": med.get("notes", ""),
+            "created_at": firestore.SERVER_TIMESTAMP
+        }
+        doc_ref.set(item)
+        saved_items.append(item)
+        
+    return {"status": "ok", "medications": saved_items}
+
+@app.get("/medications")
+def list_medications(uid: str = Depends(get_current_uid)):
+    docs = db.collection("medications").where("patient_id", "==", uid).stream()
+    meds = [doc.to_dict() for doc in docs]
+    return meds
+
+# 静的ファイルの配信（最下部に記述）
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
