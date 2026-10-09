@@ -400,7 +400,7 @@ async def stt_output_event(request: Request):
     return {"status": "ok"}
 
 # ══════════════════════════════════════════════════════════════════
-# API エンドポイント (お薬手帳系 / 新規追加)
+# API エンドポイント (お薬手帳系)
 # ══════════════════════════════════════════════════════════════════
 @app.post("/medications/analyze")
 async def analyze_medication_image(file: UploadFile = File(...), uid: str = Depends(get_current_uid)):
@@ -453,3 +453,8 @@ def list_medications(uid: str = Depends(get_current_uid)):
 
 # 静的ファイルの配信（最下部に記述）
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
