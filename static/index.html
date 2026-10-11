@@ -110,26 +110,26 @@
 <!-- ボトムナビゲーション -->
 <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-2 z-50">
     <div class="flex justify-around items-center h-12">
-        <!-- ホーム（アクティブ） -->
-        <a href="javascript:void(0);" onclick="location.href='/index.html'" class="flex flex-col items-center justify-center w-full h-full text-emerald-600">
+        <!-- ホーム -->
+        <a href="index.html" id="navHome" class="flex flex-col items-center justify-center w-full h-full text-emerald-600">
             <span class="material-symbols-outlined text-2xl mb-1">home</span>
             <span class="text-[10px] font-medium">ホーム</span>
         </a>
 
         <!-- 診察記録 -->
-        <a href="javascript:void(0);" onclick="location.href='/recording.html'" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-emerald-600 transition-colors">
+        <a href="recording.html" id="navRecording" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-emerald-600 transition-colors">
             <span class="material-symbols-outlined text-2xl mb-1">mic</span>
             <span class="text-[10px] font-medium">診察記録</span>
         </a>
 
         <!-- お薬手帳 -->
-        <a href="javascript:void(0);" onclick="location.href='/medication.html'" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-emerald-600 transition-colors">
+        <a href="medication.html" id="navMedication" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-emerald-600 transition-colors">
             <span class="material-symbols-outlined text-2xl mb-1">pill</span>
             <span class="text-[10px] font-medium">お薬手帳</span>
         </a>
 
-        <!-- マイページ / 設定 -->
-        <a href="javascript:void(0);" onclick="location.href='#'" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-emerald-600 transition-colors">
+        <!-- マイページ -->
+        <a href="#" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-emerald-600 transition-colors">
             <span class="material-symbols-outlined text-2xl mb-1">person</span>
             <span class="text-[10px] font-medium">マイページ</span>
         </a>
@@ -137,6 +137,22 @@
 </nav>
   
 <script type="module">
+  // 各ナビゲーションボタンに確実にイベントを付与する
+  document.getElementById('navHome').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = './index.html';
+  });
+
+  document.getElementById('navRecording').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = './recording.html';
+  });
+
+  document.getElementById('navMedication').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = './medication.html';
+  });
+
   setTimeout(() => { loadRecordings(); }, 300);
 
   // 服薬データ構成
@@ -149,6 +165,7 @@
 
   function renderMeds() {
     const list = document.getElementById('medList');
+    if (!list) return;
     list.innerHTML = '';
     let remaining = medData.length;
 
@@ -179,7 +196,8 @@
       });
       list.appendChild(btn);
     });
-    document.getElementById('medCount').textContent = `残り${remaining}回`;
+    const medCountEl = document.getElementById('medCount');
+    if (medCountEl) medCountEl.textContent = `残り${remaining}回`;
   }
   renderMeds();
 
@@ -203,6 +221,7 @@
 
   function showToast(msg) {
     const t = document.getElementById('toast');
+    if (!t) return;
     t.textContent = msg; 
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
