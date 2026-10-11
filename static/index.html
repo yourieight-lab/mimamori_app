@@ -107,23 +107,23 @@
 
 </main>
 
-<!-- ボトムナビゲーション -->
+<!-- ボトムナビゲーション (HTML側のonclickによる確実なフォールバックを追加) -->
 <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-2 z-50">
     <div class="flex justify-around items-center h-12">
         <!-- ホーム -->
-        <a href="index.html" id="navHome" class="flex flex-col items-center justify-center w-full h-full text-emerald-600">
+        <a href="/index.html" onclick="location.href='/index.html'; return false;" id="navHome" class="flex flex-col items-center justify-center w-full h-full text-emerald-600">
             <span class="material-symbols-outlined text-2xl mb-1">home</span>
             <span class="text-[10px] font-medium">ホーム</span>
         </a>
 
         <!-- 診察記録 -->
-        <a href="recording.html" id="navRecording" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-emerald-600 transition-colors">
+        <a href="/recording.html" onclick="location.href='/recording.html'; return false;" id="navRecording" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-emerald-600 transition-colors">
             <span class="material-symbols-outlined text-2xl mb-1">mic</span>
             <span class="text-[10px] font-medium">診察記録</span>
         </a>
 
         <!-- お薬手帳 -->
-        <a href="medication.html" id="navMedication" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-emerald-600 transition-colors">
+        <a href="/medication.html" onclick="location.href='/medication.html'; return false;" id="navMedication" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-emerald-600 transition-colors">
             <span class="material-symbols-outlined text-2xl mb-1">pill</span>
             <span class="text-[10px] font-medium">お薬手帳</span>
         </a>
@@ -137,22 +137,6 @@
 </nav>
   
 <script type="module">
-  // 各ナビゲーションボタンに確実にイベントを付与する
-  document.getElementById('navHome').addEventListener('click', (e) => {
-    e.preventDefault();
-    window.location.href = './index.html';
-  });
-
-  document.getElementById('navRecording').addEventListener('click', (e) => {
-    e.preventDefault();
-    window.location.href = './recording.html';
-  });
-
-  document.getElementById('navMedication').addEventListener('click', (e) => {
-    e.preventDefault();
-    window.location.href = './medication.html';
-  });
-
   setTimeout(() => { loadRecordings(); }, 300);
 
   // 服薬データ構成
