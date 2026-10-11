@@ -54,7 +54,7 @@ app = FastAPI(title="みまもり API", version="1.0.0")
 # ──────────────────────────────────────────────────────────────────
 async def get_current_uid(
     authorization: str = Header(default=None),
-    x_debug_uid:   str = Header(default=None, alias="X-Debug-Uid"),
+    x_debug_uid:    str = Header(default=None, alias="X-Debug-Uid"),
 ) -> str:
     return "demo-user"
 
@@ -184,11 +184,11 @@ _SYSTEM_PROMPT = """あなたは、医療機関での診察の文字起こしを
 _RESPONSE_SCHEMA = {
     "type": "OBJECT",
     "properties": {
-        "title":            {"type": "STRING"},
-        "diagnosis":        {"type": "STRING"},
+        "title":             {"type": "STRING"},
+        "diagnosis":         {"type": "STRING"},
         "lifestyle_notes": {"type": "STRING"},
         "next_appointment": {"type": "STRING"},
-        "easy_summary":     {"type": "STRING"},
+        "easy_summary":      {"type": "STRING"},
     },
     "required": ["title","diagnosis","lifestyle_notes","next_appointment","easy_summary"],
 }
@@ -350,7 +350,7 @@ def start_processing(recording_id: str, uid: str = Depends(get_current_uid)):
         raise HTTPException(500, f"文字起こし開始失敗: {str(e)}")
 
     ref.update({
-        "status":             "processing",
+        "status":              "processing",
         "stt_operation_name": op.operation.name,
         "stt_output_prefix":  output_json_uri,
     })
@@ -409,7 +409,6 @@ async def analyze_medication_image(file: UploadFile = File(...), uid: str = Depe
 
     contents = await file.read()
     
-    # Gemini に画像を渡して解析
     client = genai.Client(vertexai=True, project=PROJECT_ID, location=GEMINI_LOCATION)
     response = client.models.generate_content(
         model=GEMINI_MODEL,
@@ -427,7 +426,6 @@ async def analyze_medication_image(file: UploadFile = File(...), uid: str = Depe
     parsed = json.loads(response.text)
     meds = parsed.get("medications", [])
     
-    # Firestore に保存
     saved_items = []
     for med in meds:
         doc_ref = db.collection("medications").document()
@@ -451,7 +449,9 @@ def list_medications(uid: str = Depends(get_current_uid)):
     meds = [doc.to_dict() for doc in docs]
     return meds
 
-# 静的ファイルの配信（最下部に記述）
+# ──────────────────────────────────────────────────────────────────
+# 静的ファイルの配信（必ずすべてのAPI定義の「後」に配置）
+# ──────────────────────────────────────────────────────────────────
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
